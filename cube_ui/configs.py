@@ -1,7 +1,7 @@
-import pyray as pr
 import numpy as np
 
 rubiks_moves = {
+    # Level-1 faces (U, R, F): positive angle matches logical rotation direction.
     'U':  (np.radians( 90.),  np.array([0, 1, 0]), 1),
     "U'": (np.radians(-90.),  np.array([0, 1, 0]), 1),
 
@@ -11,6 +11,9 @@ rubiks_moves = {
     'F':  (np.radians( 90.),  np.array([0, 0, 1]), 1),
     "F'": (np.radians(-90.),  np.array([0, 0, 1]), 1),
 
+    # Level-0 faces (D, L, B): angle must be negated because these layers are
+    # on the negative side of their axis — same rotation matrix produces the
+    # opposite effect relative to the logical move table.
     'D':  (np.radians(-90.),  np.array([0, 1, 0]), 0),
     "D'": (np.radians( 90.),  np.array([0, 1, 0]), 0),
 
@@ -21,18 +24,8 @@ rubiks_moves = {
     "B'": (np.radians( 90.),  np.array([0, 0, 1]), 0),
 }
 
-
-
-window_w =600
+window_w = 600
 window_h = 600
-
 fps = 60
 
-#camera
-camera = pr.Camera3D(
-    pr.Vector3(18.0, 16.0, 18.0),   # position
-    pr.Vector3(0.0, 0.0, 0.0),     # target
-    pr.Vector3(0.0, 1.0, 0.0),     # up
-    45.0,                          # fov
-    pr.CameraProjection.CAMERA_PERSPECTIVE
-)
+# camera is created inside main() after init_window() — do not define here

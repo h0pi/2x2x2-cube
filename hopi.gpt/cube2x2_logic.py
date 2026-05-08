@@ -58,12 +58,11 @@ class Cube2x2State:
 
             # perm cycle
             cycle4(perm, a, b, c, d)
+            cycle4(ori, a, b, c, d)
 
             # ori update for affected corners (only for some moves)
             deltas = ORI_DELTA[base]
             if deltas != (0, 0, 0, 0):
-                # after cycling corners, orientation of pieces moved into positions a,b,c,d changes
-                # Apply delta to the *piece now at position* a,b,c,d
                 for pos, delta in zip((a, b, c, d), deltas):
                     ori[pos] = (ori[pos] + delta) % 3
 
