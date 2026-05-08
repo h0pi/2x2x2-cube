@@ -85,7 +85,7 @@ The Q-table is a `defaultdict(float)` keyed by `(state, action_index)`.
 ## Installation
 
 ```bash
-git clone https://github.com/<your-username>/2x2x2-cube.git
+git clone https://github.com/h0pi/2x2x2-cube.git
 cd 2x2x2-cube
 pip install raylib numpy
 ```
