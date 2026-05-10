@@ -71,6 +71,10 @@ class TrainingAgentRunner(SoftwareAgent[_TrainingPercept, int, TrainingTickResul
             episode_count=self._episode_count,
         )
 
+    def set_scramble_len(self, n: int) -> None:
+        """Update scramble depth for curriculum learning (takes effect next episode)."""
+        self._env.scramble_len = n
+
     # ------------------------------------------------------------------ internals
 
     def _sense(self) -> _TrainingPercept:

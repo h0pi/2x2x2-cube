@@ -58,18 +58,19 @@ def _btn_clicked(x: int, w: int) -> bool:
 # ------------------------------------------------------------------ main
 
 def main() -> None:
-    scramble_len = 5
+    ui_scramble_len   = 5   # depth used by the Randomize button (display cube)
+    train_start_depth = 1   # curriculum starts here and promotes up to 11
     max_steps = 30
 
     # Core components — all shared state lives here, not in the UI
     policy = QLearningAgent()
-    env_service = EnvironmentService(scramble_len=scramble_len, max_steps=max_steps)
+    env_service = EnvironmentService(scramble_len=ui_scramble_len, max_steps=max_steps)
     training_service = TrainingService(policy)
     solving_runner = SolvingAgentRunner(env_service, policy)
     training_worker = TrainingWorker(
         policy=policy,
         training_service=training_service,
-        scramble_len=scramble_len,
+        scramble_len=train_start_depth,
         max_steps=max_steps,
         save_every=10_000,
     )
@@ -122,6 +123,7 @@ def main() -> None:
                 qtable_loaded = training_service.load_qtable()
             if qtable_loaded:
                 env_service.prepare_for_solve()
+                solving_runner.reset_visited()
                 app_state = AppState.SOLVING
                 status_text = ""
             else:
@@ -183,15 +185,16 @@ def main() -> None:
         pr.end_mode_3d()
 
         # HUD — top left
-        pr.draw_rectangle(10, 10, 270, 150, pr.fade(pr.BLACK, 0.65))
+        pr.draw_rectangle(10, 10, 270, 172, pr.fade(pr.BLACK, 0.65))
         pr.draw_text(f"State:    {app_state.name}", 20, 18,  16, pr.RAYWHITE)
         pr.draw_text(f"Steps:    {env_service.step_count} / {max_steps}", 20, 40, 16, pr.RAYWHITE)
         train_label = "ON" if training_worker.is_running() else "OFF"
         train_color = pr.GREEN if training_worker.is_running() else pr.RAYWHITE
         pr.draw_text(f"Training: {train_label}", 20, 62, 16, train_color)
         pr.draw_text(f"Episodes: {training_worker.episodes}", 20, 84, 16, pr.RAYWHITE)
-        pr.draw_text(f"Epsilon:  {policy.eps:.4f}", 20, 106, 16, pr.RAYWHITE)
-        pr.draw_text(f"Q-table:  {'loaded' if qtable_loaded else 'none'}", 20, 128, 16, pr.RAYWHITE)
+        pr.draw_text(f"Depth:    {training_worker.current_depth} / 11", 20, 106, 16, pr.RAYWHITE)
+        pr.draw_text(f"Epsilon:  {policy.eps:.4f}", 20, 128, 16, pr.RAYWHITE)
+        pr.draw_text(f"Q-table:  {'loaded' if qtable_loaded else 'none'}", 20, 150, 16, pr.RAYWHITE)
 
         # Status line above buttons
         if status_text:

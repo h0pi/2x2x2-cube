@@ -1,11 +1,13 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 from agents_core.base_agent import SoftwareAgent
-from cube_agent.domain.actions import IDX_TO_ACTION
+from cube_agent.domain.actions import IDX_TO_ACTION, ACTIONS
 from cube_agent.domain.results import SolvingTickResult
 from cube_agent.application.services.environment_service import EnvironmentService
 from cube_agent.ml.i_cube_policy import ICubePolicy
+
+_N_ACTIONS = len(ACTIONS)
 
 
 @dataclass
@@ -21,20 +23,23 @@ class SolvingAgentRunner(SoftwareAgent[_CubePercept, int, SolvingTickResult, Non
 
     Each step() is one Sense->Think->Act cycle:
       Sense : read current cube state from the shared EnvironmentService
-      Think : pick the best action via a pure-greedy policy lookup (epsilon=0)
+      Think : pick the highest-Q action that does NOT lead to a already-visited
+              state (loop prevention); fall back to highest-Q if all next states
+              have been visited
       Act   : apply the action, update environment state
       (no Learn phase — this agent does not update the Q-table)
 
-    Returns None when the cube is already solved or max_steps is reached
-    (no-work case — host should stop calling step() and wait for reset).
-
-    The runner operates on the *shared* EnvironmentService, keeping the
-    UI visual cube and the logical state in sync.
+    Returns None when the cube is already solved or max_steps is reached.
     """
 
     def __init__(self, env_service: EnvironmentService, policy: ICubePolicy):
         self._env = env_service
         self._policy = policy
+        self._visited: set[int] = set()
+
+    def reset_visited(self) -> None:
+        """Call this when starting a new solve attempt."""
+        self._visited.clear()
 
     def step(self) -> Optional[SolvingTickResult]:
         # SENSE
@@ -59,7 +64,19 @@ class SolvingAgentRunner(SoftwareAgent[_CubePercept, int, SolvingTickResult, Non
         )
 
     def _think(self, percept: _CubePercept) -> int:
-        return self._policy.choose_action_greedy(percept.state_encoded)
+        self._visited.add(percept.state_encoded)
+        q_vals = self._policy.get_action_values(percept.state_encoded)
+
+        # Sort actions best-first; pick the first whose next state is unvisited
+        sorted_actions = sorted(range(_N_ACTIONS), key=lambda a: -q_vals[a])
+        cube_state = self._env.current_cube_state()
+        for action_idx in sorted_actions:
+            next_enc = cube_state.apply(IDX_TO_ACTION[action_idx]).encode()
+            if next_enc not in self._visited:
+                return action_idx
+
+        # Every next state has been visited — just take the best Q action
+        return sorted_actions[0]
 
     def _act(self, percept: _CubePercept, action_idx: int) -> SolvingTickResult:
         action_str = IDX_TO_ACTION[action_idx]

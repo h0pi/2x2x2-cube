@@ -36,6 +36,11 @@ class ICubePolicy(ABC):
         ...
 
     @abstractmethod
+    def get_action_values(self, state_encoded: int) -> list:
+        """Return Q-values for all actions at this state (for loop-avoidance)."""
+        ...
+
+    @abstractmethod
     def get_qtable(self) -> dict:
         """Return a snapshot of the Q-table for persistence."""
         ...

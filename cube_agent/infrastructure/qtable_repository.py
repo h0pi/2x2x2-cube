@@ -17,13 +17,18 @@ def save(qtable: dict, path: str = DEFAULT_PATH) -> None:
 
 
 def load(path: str = DEFAULT_PATH) -> dict:
-    """Load Q-table dict from a pickle file. Returns {} if file not found."""
+    """Load Q-table dict from a pickle file. Returns {} if file not found or corrupt."""
     if not os.path.exists(path):
         return {}
-    with open(path, 'rb') as f:
-        data = pickle.load(f)
-    print(f"[Repository] Q-table loaded from {path}  ({len(data)} entries)")
-    return data
+    try:
+        with open(path, 'rb') as f:
+            data = pickle.load(f)
+        print(f"[Repository] Q-table loaded from {path}  ({len(data)} entries)")
+        return data
+    except Exception as e:
+        print(f"[Repository] WARNING: could not load Q-table ({e}) — starting fresh.")
+        os.remove(path)
+        return {}
 
 
 def exists(path: str = DEFAULT_PATH) -> bool:
