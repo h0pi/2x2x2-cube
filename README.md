@@ -106,7 +106,7 @@ The HUD shows `Depth: X / 11` in real time. Each depth level is only unlocked af
 ## Installation
 
 ```bash
-git clone https://github.com/<your-username>/2x2x2-cube.git
+git clone https://github.com/h0pi/2x2x2-cube.git
 cd 2x2x2-cube
 pip install raylib numpy
 ```
