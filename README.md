@@ -129,6 +129,8 @@ python run.py
 | **Train ON/OFF** | Start or stop the background curriculum training thread |
 | **Solve** | Let the trained agent solve the current cube one move at a time |
 
+**Camera:** click and drag with the left mouse button to orbit the view. Just hovering over the window no longer rotates the camera.
+
 **Typical workflow:**
 
 1. Launch the app — the cube starts scrambled automatically
@@ -151,6 +153,8 @@ python run.py
 **Loop prevention** — `SolvingAgentRunner` maintains a visited-state set per solve attempt. At each step it sorts all 12 actions by Q-value and picks the best one whose resulting state has not yet been visited. This eliminates oscillation between two states when Q-values are tied or undertrained.
 
 **Memory efficiency** — replacing `defaultdict` with a numpy array reduced peak RAM from ~18 GB (Python dict overhead: ~200 bytes/entry) to under 1 GB physical during typical training (numpy: 4 bytes/entry, demand-paged).
+
+**Orientation delta fix** — `ORI_DELTA` previously gave F, B, R, and L the same `(1, 2, 1, 2)` pattern, but F's `MOVE_CYCLES` cycle has the opposite handedness from B/R/L's. With all four equal, some solve sequences ended with `ori = (0,)*8` (reported as solved) while 4 corners were still visually twisted 120°. Fixed by setting `B`, `R`, and `L` to `(2, 1, 2, 1)` while keeping `F` at `(1, 2, 1, 2)`. **This changes the state encoding — delete and retrain any existing `qtable_2x2.pkl` saved before this fix.**
 
 ---
 
