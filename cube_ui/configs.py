@@ -24,8 +24,8 @@ rubiks_moves = {
     "B'": (np.radians( 90.),  np.array([0, 0, 1]), 0),
 }
 
-window_w = 600
-window_h = 600
+window_w = 900
+window_h = 900
 fps = 60
 
 # camera is created inside main() after init_window() — do not define here

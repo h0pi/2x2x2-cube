@@ -76,6 +76,9 @@ class QLearningAgent(ICubePolicy):
         with self._lock:
             return self._Q[state_encoded].tolist()
 
+    def set_eps(self, value: float) -> None:
+        self._eps = max(self._eps_min, min(1.0, value))
+
     # ------------------------------------------------------------------ persistence
 
     def get_qtable(self) -> dict:

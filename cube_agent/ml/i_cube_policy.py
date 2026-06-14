@@ -41,6 +41,12 @@ class ICubePolicy(ABC):
         ...
 
     @abstractmethod
+    def set_eps(self, value: float) -> None:
+        """Force epsilon to a specific value (clamped to [eps_min, 1.0]).
+        Used by the curriculum to boost exploration after depth promotion or plateau."""
+        ...
+
+    @abstractmethod
     def get_qtable(self) -> dict:
         """Return a snapshot of the Q-table for persistence."""
         ...

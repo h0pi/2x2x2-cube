@@ -75,6 +75,10 @@ class TrainingAgentRunner(SoftwareAgent[_TrainingPercept, int, TrainingTickResul
         """Update scramble depth for curriculum learning (takes effect next episode)."""
         self._env.scramble_len = n
 
+    def set_max_steps(self, n: int) -> None:
+        """Update episode step limit for curriculum learning (takes effect next episode)."""
+        self._env.max_steps = n
+
     # ------------------------------------------------------------------ internals
 
     def _sense(self) -> _TrainingPercept:
