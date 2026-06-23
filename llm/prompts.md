@@ -3,6 +3,53 @@
 Grouped by problem. Quoted prompts are verbatim where I have the exact text;
 others are summarized from the session.
 
+## 0. Original requirements & initial implementation (earlier session)
+
+The project started from a Clean Architecture requirement my professor gave
+for a different (C#) reference project, an "AiAgents" spam classifier with
+`AiAgents.Core` (generic `SoftwareAgent<TPercept,TAction,TResult,TExperience>`
+abstractions), a `SpamAgent` shared/domain/application layer, and a thin
+`SpamAgent.Web` host. I pasted that full requirement (in Bosnian) and asked
+the LLM to translate the same rules to my own Python project:
+
+- *"Eh ja imam ovaj project 2x2x2-cube i u njemu ima 2x2x2 rubikova kocka
+  koja se pokaze u prozoru i napravi par random okretanja, ja sam pokusao
+  napraviti agenta i istrenirati ga da zna sloziti tu 2x2 kocku [...] hocu da
+  ti meni napravis tog agenta pa da ga ja istreniram [...] ne moze se
+  trenirati u isto vrijeme dok traje visualisacija okretanja strana kocke pa
+  bih ja htio to razdvojiti [...] daj mi najbolje savjete da ja to pregledam
+  pa cu ti onda kasnije reci kad ces kreniti u implementaciju"* — i.e. asked
+  for an analysis/plan first (mapping the professor's Sense→Think→Act→Learn
+  and Domain/Application/Infrastructure/Web rules onto `agents_core/`,
+  `cube_agent/`, `cube_ui/`), and only approved implementation afterward with
+  *"ok spreman sam pocni sa implementacijom"*.
+- *"please continue where you left off"* — used after the session ran long
+  and got summarized, to resume implementation without losing the plan.
+- *"can you tell me is it optimized as much as it can be because I left it to
+  train over one day and night it got to 5th depth and around 60% it is so
+  slow and it uses 18gb of ram its too much I think"* — this is what led to
+  replacing the Python `dict` Q-table with the numpy float32 array (see
+  README "Memory efficiency").
+- *"right now it considers cube solved only if orange is on top and white in
+  front etc, it doesnt matter color orientation when solved it has only to be
+  solved can you fix that and also when scrambling make sure it doesnt make
+  one move and then makes same move backwards [...] at the end of 5 move
+  scramble I have 2 move scramble"* — led to the scramble-quality filter
+  (`Cube2x2State.scramble()` rejecting same-face/opposite-face repeats) and
+  fixing the solved-check to be orientation-of-the-whole-cube-independent.
+- *"yes but act as a senior ai engineer and make sure to not overlook
+  anything"* — asked for a careful, non-superficial review rather than a
+  quick patch, before a non-trivial logic fix.
+- *"ok and when I do that change do I need to retrain it again?"* — recurring
+  question throughout the project; I always asked this before accepting a
+  fix that touches state representation.
+- *"delete q table for me"* / *"delete q table for me please"* — used when a
+  fix genuinely required starting training over (state encoding changes),
+  as opposed to later fixes where I explicitly avoided this.
+- *"update readme accordingly to agent updates by now"* — first request to
+  keep `README.md` in sync with the code, which became a recurring step
+  after every later change too.
+
 ## 1. Diagnosing the "solved but visually wrong" bug
 
 - *"I have an agent for solving 2x2x2 rubiks cube [...] please try to find the
@@ -34,16 +81,7 @@ others are summarized from the session.
   rotates when I hover with my mouse over it I want it to rotate only when I
   click and move mouse"*
 
-## 3. Documentation
-
-- *"can you now make a documentation (new notepad file) of my agent about my
-  agent, I have to send this agent as a zip and that documentation to my
-  professor."*
-- *"can you give me architecture here so I can screenshot it and paste that
-  image instead of this text"* — requested a diagram instead of an ASCII
-  tree, then iterated twice on overlapping text/arrows in the diagram.
-
-## 4. Acting on the professor's feedback
+## 3. Acting on the professor's feedback
 
 - Pasted the professor's full feedback (in Bosnian) and asked: *"can you
   separate this issues and get to them one by one but first tell me what are
