@@ -37,22 +37,31 @@ agents_core/          Generic agent abstractions (SoftwareAgent, interfaces)
 cube_agent/           The "brain" — all logic, no pyray, no threads
   domain/             Cube state machine, move tables, reward rules
   ml/                 numpy Q-table (thread-safe RLock), ICubePolicy interface
-  infrastructure/     Q-table save/load (sparse pickle)
+  infrastructure/     Q-table save/load (sparse pickle, atomic write via os.replace)
   application/
     services/         EnvironmentService (episode state, reward shaping)
                       TrainingService (Q-table persistence facade)
+                      CurriculumService (depth promotion, plateau detection,
+                                          max_steps scaling — works with or
+                                          without a GUI attached)
     runners/          SolvingAgentRunner  — Sense → Think → Act  (+ loop prevention)
                       TrainingAgentRunner — Sense → Think → Act → Learn
 
 cube_ui/              Thin host layer — raylib window, buttons, background thread
-  workers/            TrainingWorker (daemon thread, curriculum promotion, periodic saves)
+  workers/            TrainingWorker (daemon thread lifecycle + periodic saves only —
+                      no curriculum thresholds; delegates decisions to CurriculumService)
   main.py             Window loop, AppState machine, button logic
 
 run.py                Entry point — python run.py
+demo_learning.py      Standalone script proving the Learn step changes behavior
+                      (fresh in-memory agent, before/after Q-values for one fixed state)
 ```
 
 Each runner tick is an explicit **Sense → Think → Act (→ Learn)** cycle.  
-The UI never contains business logic; the agent never touches raylib.
+The UI never contains business logic; the agent never touches raylib. Curriculum
+decisions (when to promote scramble depth, when to force exploration) live in
+`CurriculumService` in the application layer, not in the UI worker — so the
+training logic is testable and usable with no GUI at all.
 
 ---
 
@@ -156,6 +165,12 @@ python run.py
 
 **Orientation delta fix** — `ORI_DELTA` previously gave F, B, R, and L the same `(1, 2, 1, 2)` pattern, but F's `MOVE_CYCLES` cycle has the opposite handedness from B/R/L's. With all four equal, some solve sequences ended with `ori = (0,)*8` (reported as solved) while 4 corners were still visually twisted 120°. Fixed by setting `B`, `R`, and `L` to `(2, 1, 2, 1)` while keeping `F` at `(1, 2, 1, 2)`. **This changes the state encoding — delete and retrain any existing `qtable_2x2.pkl` saved before this fix.**
 
+**Curriculum logic moved out of the UI** — `TrainingWorker` (in `cube_ui/workers/`) used to own the curriculum constants (`_PROMOTE_RATE`, `_WINDOW_SIZE`, `_MAX_STAGNANT_WINDOWS`, `_EPS_ON_PROMOTE`, `_EPS_ON_STAGNANT`) and called `set_scramble_len()` / `set_max_steps()` / `set_eps()` directly — i.e. training decisions living in the UI layer, which broke the "UI has no business logic" rule. This logic now lives in `cube_agent/application/services/curriculum_service.py` (`CurriculumService`), which the worker simply delegates to after each finished episode. `CurriculumService` only depends on the runner/policy interfaces, so it works identically with or without a GUI attached. Verified to produce identical promotion/exploration behavior to the original implementation.
+
+**Atomic Q-table saves** — `qtable_repository.save()` previously wrote directly to `qtable_2x2.pkl`; an interrupted write (crash, force-quit) would leave a corrupt, unloadable file and lose all prior training. It now writes to `qtable_2x2.pkl.tmp` first, then calls `os.replace()` onto the final path — atomic at the filesystem level, so the file is always either the complete old table or the complete new one, never a partial write.
+
+**Learning demo** — `demo_learning.py` is a standalone script that proves the Bellman update actually changes agent behavior: it fixes one cube state, prints its Q-values and greedy action before any training (all zeros — an untrained, effectively arbitrary choice), runs 2,000 real training episodes, then prints the same state's Q-values and decision again (now clearly preferring the correct solving move). It uses a fresh, in-memory `QLearningAgent` and never touches the project's real `qtable_2x2.pkl`.
+
 ---
 
 ## Project layout
@@ -163,6 +178,7 @@ python run.py
 ```
 2x2x2-cube/
 ├── run.py
+├── demo_learning.py                 ← standalone proof that Learn changes behavior
 ├── qtable_2x2.pkl                  ← auto-generated after training
 ├── agents_core/
 │   └── base_agent.py               SoftwareAgent[TPercept,TAction,TResult,TExperience]
@@ -175,11 +191,13 @@ python run.py
 │   │   ├── i_cube_policy.py        ICubePolicy interface
 │   │   └── qlearning_agent.py      numpy-backed thread-safe Q-learning
 │   ├── infrastructure/
-│   │   └── qtable_repository.py    Sparse pickle save/load with corruption handling
+│   │   └── qtable_repository.py    Sparse pickle save/load, atomic write (os.replace)
 │   └── application/
 │       ├── services/
 │       │   ├── environment_service.py
-│       │   └── training_service.py
+│       │   ├── training_service.py
+│       │   └── curriculum_service.py     Depth promotion, plateau detection,
+│       │                                 max_steps scaling (GUI-independent)
 │       └── runners/
 │           ├── solving_agent_runner.py   greedy + visited-set loop prevention
 │           └── training_agent_runner.py  epsilon-greedy + Bellman update
@@ -188,7 +206,7 @@ python run.py
     ├── rubik.py                    3D cube renderer (raylib)
     ├── main.py                     Window loop, AppState, buttons
     └── workers/
-        └── training_worker.py      Daemon thread + curriculum promotion logic
+        └── training_worker.py      Daemon thread lifecycle + periodic saves only
 ```
 
 ---
